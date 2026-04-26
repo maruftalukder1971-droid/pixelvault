@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Wallpaper } from "@/models/Wallpaper";
 import { Category } from "@/models/Category";
-import { SortOrder } from "mongoose";
 
 export const revalidate = 60;
 
@@ -16,10 +15,8 @@ export async function GET(req: NextRequest) {
 
   const q = searchParams.get("q")?.trim();
   const categorySlug = searchParams.get("category");
-
   const minWidth = parseInt(searchParams.get("minWidth") ?? "0");
   const maxWidth = parseInt(searchParams.get("maxWidth") ?? "0");
-
   const orientation = searchParams.get("orientation");
   const sort = searchParams.get("sort") ?? "recent";
   const featured = searchParams.get("featured") === "1";
@@ -45,9 +42,7 @@ export async function GET(req: NextRequest) {
   if (categorySlug) {
     const cat = await Category.findOne({ slug: categorySlug }).lean();
     if (cat) filter.category = (cat as any)._id;
-    else {
-      return NextResponse.json({ items: [], total: 0, page, hasMore: false });
-    }
+    else return NextResponse.json({ items: [], total: 0, page, hasMore: false });
   }
 
   // ================= WIDTH FILTER =================
@@ -69,9 +64,9 @@ export async function GET(req: NextRequest) {
 
   const skip = (page - 1) * limit;
 
-  // ======================================================
-  // TRENDING MODE (UNCHANGED)
-  // ======================================================
+  // =========================================================
+  // TRENDING PIPELINE
+  // =========================================================
   if (sort === "trending") {
     const pipeline: any[] = [
       { $match: filter },
@@ -95,9 +90,7 @@ export async function GET(req: NextRequest) {
       },
       {
         $addFields: {
-          trendingScore: {
-            $multiply: ["$baseScore", "$recencyBoost"]
-          }
+          trendingScore: { $multiply: ["$baseScore", "$recencyBoost"] }
         }
       },
       { $sort: { trendingScore: -1, createdAt: -1 } },
@@ -111,26 +104,7 @@ export async function GET(req: NextRequest) {
           as: "category"
         }
       },
-      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          title: 1,
-          slug: 1,
-          tags: 1,
-          url: 1,
-          width: 1,
-          height: 1,
-          downloads: 1,
-          views: 1,
-          likes: 1,
-          featured: 1,
-          createdAt: 1,
-          "category._id": 1,
-          "category.name": 1,
-          "category.slug": 1,
-          "category.color": 1
-        }
-      }
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } }
     ];
 
     const [items, total] = await Promise.all([
@@ -146,9 +120,9 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // ======================================================
-  // SEARCH RANKING MODE
-  // ======================================================
+  // =========================================================
+  // SEARCH SORT PIPELINE
+  // =========================================================
   if (q) {
     const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp(safe, "i");
@@ -162,42 +136,6 @@ export async function GET(req: NextRequest) {
             $sum: [
               { $cond: [{ $regexMatch: { input: "$title", regex: exactRe } }, 100, 0] },
               { $cond: [{ $regexMatch: { input: "$title", regex: re } }, 30, 0] },
-              {
-                $cond: [
-                  {
-                    $in: [
-                      q.toLowerCase(),
-                      {
-                        $map: {
-                          input: "$tags",
-                          as: "t",
-                          in: { $toLower: "$$t" }
-                        }
-                      }
-                    ]
-                  },
-                  20,
-                  0
-                ]
-              },
-              {
-                $cond: [
-                  {
-                    $regexMatch: {
-                      input: {
-                        $reduce: {
-                          input: "$tags",
-                          initialValue: "",
-                          in: { $concat: ["$$value", " ", "$$this"] }
-                        }
-                      },
-                      regex: re
-                    }
-                  },
-                  10,
-                  0
-                ]
-              },
               { $multiply: [{ $ifNull: ["$downloads", 0] }, 0.001] }
             ]
           }
@@ -214,26 +152,7 @@ export async function GET(req: NextRequest) {
           as: "category"
         }
       },
-      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          title: 1,
-          slug: 1,
-          tags: 1,
-          url: 1,
-          width: 1,
-          height: 1,
-          downloads: 1,
-          views: 1,
-          likes: 1,
-          featured: 1,
-          createdAt: 1,
-          "category._id": 1,
-          "category.name": 1,
-          "category.slug": 1,
-          "category.color": 1
-        }
-      }
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } }
     ];
 
     const [items, total] = await Promise.all([
@@ -249,32 +168,39 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // ======================================================
-  // DEFAULT MODE (FIXED SORT - FINAL SAFE VERSION)
-  // ======================================================
-  const sortObj: Record<string, SortOrder> = {};
+  // =========================================================
+  // FIXED SORT OBJECT (IMPORTANT FIX HERE)
+  // =========================================================
+  type SortObj = Record<string, 1 | -1>;
+
+  let sortObj: SortObj = { createdAt: -1 };
 
   if (sort === "downloads") {
-    sortObj.downloads = -1;
-  } else if (sort === "likes") {
-    sortObj.likes = -1;
-    sortObj.createdAt = -1;
-  } else if (sort === "views") {
-    sortObj.views = -1;
-    sortObj.createdAt = -1;
-  } else {
-    sortObj.createdAt = -1;
+    sortObj = { downloads: -1 };
+  } 
+  else if (sort === "likes") {
+    sortObj = { likes: -1, createdAt: -1 };
+  } 
+  else if (sort === "views") {
+    sortObj = { views: -1, createdAt: -1 };
+  } 
+  else {
+    sortObj = { createdAt: -1 };
   }
 
-  const items = await Wallpaper.find(filter)
-    .populate("category", "name slug color")
-    .sort(sortObj as any)
-    .skip(skip)
-    .limit(limit)
-    .lean()
-    .exec();
+  // =========================================================
+  // FINAL QUERY
+  // =========================================================
+  const [items, total] = await Promise.all([
+    Wallpaper.find(filter)
+      .populate("category", "name slug color")
+      .sort(sortObj as any)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
 
-  const total = await Wallpaper.countDocuments(filter);
+    Wallpaper.countDocuments(filter)
+  ]);
 
   return NextResponse.json({
     items,
