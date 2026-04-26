@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const sort = searchParams.get("sort") ?? "recent";
   const featured = searchParams.get("featured") === "1";
 
-  const filter: Record<string, unknown> = {};
+  const filter: Record<string, any> = {};
 
   // ================= SEARCH =================
   if (q) {
@@ -45,7 +45,9 @@ export async function GET(req: NextRequest) {
   if (categorySlug) {
     const cat = await Category.findOne({ slug: categorySlug }).lean();
     if (cat) filter.category = (cat as any)._id;
-    else return NextResponse.json({ items: [], total: 0, page, hasMore: false });
+    else {
+      return NextResponse.json({ items: [], total: 0, page, hasMore: false });
+    }
   }
 
   // ================= WIDTH FILTER =================
@@ -68,7 +70,7 @@ export async function GET(req: NextRequest) {
   const skip = (page - 1) * limit;
 
   // ======================================================
-  // TRENDING PIPELINE
+  // TRENDING MODE (UNCHANGED)
   // ======================================================
   if (sort === "trending") {
     const pipeline: any[] = [
@@ -145,7 +147,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ======================================================
-  // SEARCH RANKING
+  // SEARCH RANKING MODE
   // ======================================================
   if (q) {
     const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -248,40 +250,31 @@ export async function GET(req: NextRequest) {
   }
 
   // ======================================================
-  // DEFAULT SORT (FIXED - FINAL SAFE VERSION)
+  // DEFAULT MODE (FIXED SORT - FINAL SAFE VERSION)
   // ======================================================
   const sortObj: Record<string, SortOrder> = {};
 
-  switch (sort) {
-    case "downloads":
-      sortObj.downloads = -1;
-      break;
-
-    case "likes":
-      sortObj.likes = -1;
-      sortObj.createdAt = -1;
-      break;
-
-    case "views":
-      sortObj.views = -1;
-      sortObj.createdAt = -1;
-      break;
-
-    default:
-      sortObj.createdAt = -1;
-      break;
+  if (sort === "downloads") {
+    sortObj.downloads = -1;
+  } else if (sort === "likes") {
+    sortObj.likes = -1;
+    sortObj.createdAt = -1;
+  } else if (sort === "views") {
+    sortObj.views = -1;
+    sortObj.createdAt = -1;
+  } else {
+    sortObj.createdAt = -1;
   }
 
-  const [items, total] = await Promise.all([
-    Wallpaper.find(filter)
-      .populate("category", "name slug color")
-      .sort(sortObj)
-      .skip(skip)
-      .limit(limit)
-      .lean(),
+  const items = await Wallpaper.find(filter)
+    .populate("category", "name slug color")
+    .sort(sortObj as any)
+    .skip(skip)
+    .limit(limit)
+    .lean()
+    .exec();
 
-    Wallpaper.countDocuments(filter)
-  ]);
+  const total = await Wallpaper.countDocuments(filter);
 
   return NextResponse.json({
     items,
