@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         $addFields: {
           recencyBoost: {
             $cond: [
-              { $gte: ["$createdAt", new Date(Date.now() - 30 * 86_400_000)] },
+              { $gte: ["$createdAt", new Date(Date.now() - 30 * 86400000)] },
               1.5,
               1
             ]
@@ -248,20 +248,28 @@ export async function GET(req: NextRequest) {
   }
 
   // ======================================================
-  // DEFAULT SORT (FIXED)
+  // DEFAULT SORT (FIXED - FINAL SAFE VERSION)
   // ======================================================
   const sortObj: Record<string, SortOrder> = {};
 
-  if (sort === "downloads") {
-    sortObj.downloads = -1;
-  } else if (sort === "likes") {
-    sortObj.likes = -1;
-    sortObj.createdAt = -1;
-  } else if (sort === "views") {
-    sortObj.views = -1;
-    sortObj.createdAt = -1;
-  } else {
-    sortObj.createdAt = -1;
+  switch (sort) {
+    case "downloads":
+      sortObj.downloads = -1;
+      break;
+
+    case "likes":
+      sortObj.likes = -1;
+      sortObj.createdAt = -1;
+      break;
+
+    case "views":
+      sortObj.views = -1;
+      sortObj.createdAt = -1;
+      break;
+
+    default:
+      sortObj.createdAt = -1;
+      break;
   }
 
   const [items, total] = await Promise.all([
