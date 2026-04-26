@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Pixelvault
 
 Production-ready wallpaper site with admin panel + TOTP 2FA.
@@ -33,3 +34,7 @@ Visit `/admin/reset` â€” supply username, new password, plus either:
 - One of your saved recovery codes
 
 If you lose BOTH your authenticator AND recovery codes, you must reset the User collection in MongoDB Atlas.
+=======
+# pixelvault
+Premium HD and 4K wallpapers website built with Next.js. Infinite scroll, fast loading, and responsive design.
+>>>>>>> 1dfb81a4a67497ac37150f2af32ad53c9909d85e
