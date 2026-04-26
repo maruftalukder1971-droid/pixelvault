@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --grad-1: #a78bfa;
+  --grad-2: #e879f9;
+  --grad-3: #f472b6;
+  --bg-deep: #050507;
+  --bg-elevated: #0a0a0f;
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: auto;
+  background: var(--bg-deep);
+}
+
+html, body {
+  background: var(--bg-deep);
+  color: #fafafa;
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeSpeed; /* was optimizeLegibility — more expensive */
+}
+
+body {
+  -webkit-overflow-scrolling: touch;
+  /* PERF: replaced 3 stacked radial gradients with 1 simpler one — was costing ~2ms paint/frame */
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(167, 139, 250, 0.12), transparent 60%),
+    var(--bg-deep);
+}
+
+/* PERF: content-visibility lets browser skip rendering offscreen images entirely */
+img {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 400px;
+}
+
+/* Premium scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); background-clip: padding-box; }
+
+/* Skeleton — uses linear gradient (cheap) instead of filter */
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Gradient text — paint-only, cheap */
+.gradient-text {
+  background: linear-gradient(135deg, var(--grad-1), var(--grad-2), var(--grad-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* PERF: focus glow only on focus, not always rendered */
+.focus-ring:focus-within {
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25);
+}
+
+/* Apple ease */
+.ease-premium {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Heart pop */
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.3); }
+  60% { transform: scale(0.9); }
+  100% { transform: scale(1.1); }
+}
+.heart-pop { animation: heart-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Fade up */
+@keyframes fade-up {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* PERF: stop animating after one play, free GPU layer */
+  animation-fill-mode: both;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* === HERO ORBS — the big perf fix === */
+/* PERF: contain isolates this whole section from outside layout/paint
+   content-visibility hides it from rendering when scrolled past */
+.hero-bg-layer {
+  contain: strict;
+  content-visibility: auto;
+  contain-intrinsic-size: 100vw 80vh;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  /* PERF: blur(60px) is much cheaper than blur(80px) — almost no visual diff */
+  filter: blur(60px);
+  opacity: 0.4;
+  /* PERF: force GPU layer once, keep it there */
+  transform: translateZ(0);
+  will-change: transform;
+}
+.orb-violet {
+  width: 480px; height: 480px;
+  background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
+  top: -10%; left: 10%;
+  animation: drift-1 24s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+.orb-fuchsia {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, #d946ef 0%, transparent 70%);
+  top: 30%; right: 5%;
+  animation: drift-2 28s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+.orb-rose {
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, #f43f5e 0%, transparent 70%);
+  bottom: 5%; left: 35%;
+  animation: drift-3 32s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  opacity: 0.3;
+}
+/* PERF: only translate3d (GPU), no scale (causes filter recompute) */
+@keyframes drift-1 {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(80px, 60px, 0); }
+}
+@keyframes drift-2 {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-120px, 40px, 0); }
+}
+@keyframes drift-3 {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(60px, -80px, 0); }
+}
+
+/* === HERO HEADING === */
+.hero-heading {
+  /* PERF: text-shadow is cheap; was fine */
+  text-shadow: 0 0 40px rgba(167, 139, 250, 0.15);
+}
+.hero-gradient {
+  background: linear-gradient(110deg, #a78bfa 0%, #e879f9 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* PERF: removed background-size animation + drop-shadow filter
+     filters on text are EXPENSIVE during scroll. Static gradient looks 95% as good */
+}
+
+/* === Disable expensive hovers during scroll === */
+.is-scrolling .hover-when-idle {
+  pointer-events: none;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

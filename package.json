@@ -1,0 +1,44 @@
+{
+  "name": "pixelvault",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "seed": "tsx scripts/seed.ts",
+    "secret": "node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\""
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.4.0",
+    "dns": "^0.1.2",
+    "jose": "^5.6.3",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.408.0",
+    "mongodb": "^7.2.0",
+    "mongoose": "^8.5.1",
+    "next": "^16.2.4",
+    "otplib": "^12.0.1",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.10",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "dotenv": "^16.6.1",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.6",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}
