@@ -13,13 +13,11 @@ export interface IWallpaper {
   format: string;
   downloads: number;
   views: number;
-
-  // ✅ FIX: added missing field
-  likes: number;
-
+  likes: number; // ✅ ADD THIS
   featured: boolean;
   createdAt: Date;
 }
+
 
 const WallpaperSchema = new Schema<IWallpaper>(
   {
